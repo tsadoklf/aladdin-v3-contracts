@@ -1,4 +1,5 @@
 /* eslint-disable node/no-missing-import */
+// @ts-nocheck
 import { constants } from "ethers";
 import { defaultAbiCoder } from "ethers/lib/utils";
 import { ethers } from "hardhat";
@@ -11,8 +12,11 @@ import {
   VeCTR,
   ICurveGaugeV4V5,
   SmartWalletWhitelist,
-} from "../typechain";
-import { GaugeFactory } from "../typechain/GaugeFactory";
+} from "../typechain-types";
+
+// import { GaugeFactory } from "../typechain-types/GaugeFactory";
+import { GaugeFactory } from "../typechain-types";
+
 import { DEPLOYED_CONTRACTS, ACRV_IFO_VAULTS, VAULT_CONFIG, ADDRESS } from "./utils";
 
 const config: {

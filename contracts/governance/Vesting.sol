@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Vesting is Ownable {
   using SafeERC20 for IERC20;
@@ -50,37 +50,34 @@ contract Vesting is Ownable {
     emit Claim(msg.sender, _claimable);
   }
 
-  function newVesting(
-    address _recipient,
-    uint256 _amount,
-    uint256 _startTime,
-    uint256 _endTime
-  ) external onlyOwner {
-    require(vesting[_recipient].vestedAmount == 0, "Vesting: already vested");
-    require(_startTime < _endTime && _endTime < uint64(-1), "Vesting: invalid timestamp");
+    function newVesting(address _recipient, uint256 _amount, uint256 _startTime, uint256 _endTime) external onlyOwner {
 
-    IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+        require(vesting[_recipient].vestedAmount == 0, "Vesting: already vested");
+        // require(_startTime < _endTime && _endTime < uint64(-1), "Vesting: invalid timestamp");
+        require(_startTime < _endTime && _endTime < type(uint64).max, "Vesting: invalid timestamp");
 
-    vesting[_recipient] = VestState({
-      vestedAmount: uint128(_amount),
-      claimedAmount: 0,
-      startTime: uint64(_startTime),
-      endTime: uint64(_endTime)
-    });
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
 
-    emit Vest(_recipient, _amount, _startTime, _endTime);
-  }
+        vesting[_recipient] = VestState({
+            vestedAmount: uint128(_amount),
+            claimedAmount: 0,
+            startTime: uint64(_startTime),
+            endTime: uint64(_endTime)
+        });
 
-  function _vested(address _recipient, uint256 _time) internal view returns (uint256) {
-    VestState memory _state = vesting[_recipient];
-
-    if (_time < _state.startTime) {
-      return 0;
-    } else if (_time >= _state.endTime) {
-      return _state.vestedAmount;
-    } else {
-      // safe math is not needed, since all amounts are valid.
-      return (uint256(_state.vestedAmount) * (_time - _state.startTime)) / (_state.endTime - _state.startTime);
+        emit Vest(_recipient, _amount, _startTime, _endTime);
     }
-  }
+
+    function _vested(address _recipient, uint256 _time) internal view returns (uint256) {
+        VestState memory _state = vesting[_recipient];
+
+        if (_time < _state.startTime) {
+          return 0;
+        } else if (_time >= _state.endTime) {
+            return _state.vestedAmount;
+        } else {
+            // safe math is not needed, since all amounts are valid.
+            return (uint256(_state.vestedAmount) * (_time - _state.startTime)) / (_state.endTime - _state.startTime);
+        }
+    }
 }

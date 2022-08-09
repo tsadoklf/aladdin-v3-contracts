@@ -1,6 +1,7 @@
 /* eslint-disable node/no-missing-import */
+// @ts-nocheck
 import { ethers } from "hardhat";
-import { AladdinZap, CLeverCVXLocker, CLeverToken, ProxyAdmin, Furnace } from "../typechain";
+import { AladdinZap, CLeverCVXLocker, CLeverToken, ProxyAdmin, Furnace } from "../typechain-types";
 import { ADDRESS, ZAP_ROUTES } from "./utils";
 
 const config: {

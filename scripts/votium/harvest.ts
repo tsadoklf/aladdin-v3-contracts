@@ -1,4 +1,5 @@
 /* eslint-disable node/no-missing-import */
+// @ts-nocheck
 import { Command } from "commander";
 import { BigNumber } from "ethers";
 import * as hre from "hardhat";

@@ -1,4 +1,5 @@
 /* eslint-disable node/no-missing-import */
+// @ts-nocheck
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue } from "firebase/database";
 import { TOKENS } from "../utils";

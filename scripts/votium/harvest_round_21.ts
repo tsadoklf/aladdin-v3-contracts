@@ -1,4 +1,5 @@
 /* eslint-disable node/no-missing-import */
+// @ts-nocheck
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { DEPLOYED_CONTRACTS, TOKENS } from "../utils";

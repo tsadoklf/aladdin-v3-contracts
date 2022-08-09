@@ -1,4 +1,5 @@
 /* eslint-disable node/no-missing-import */
+// @ts-nocheck
 import { ethers } from "hardhat";
 import {
   AladdinConvexVault,
@@ -7,7 +8,7 @@ import {
   AladdinCRVZap,
   AladdinZap,
   ProxyAdmin,
-} from "../typechain";
+} from "../typechain-types";
 import { ACRV_VAULTS, ADDRESS, encodePoolHint, VAULT_CONFIG } from "./utils";
 
 const config: {
@@ -43,10 +44,13 @@ async function addVaults() {
   for (const { name, fees } of ACRV_VAULTS) {
     const rewards = VAULT_CONFIG[name].rewards;
     const convexId = VAULT_CONFIG[name].convexId;
+
     console.log("Adding pool with pid:", convexId, "rewards:", rewards.join("/"));
     const tx = await vault.addPool(convexId, rewards, fees.withdraw, fees.platform, fees.harvest);
+    
     console.log("wait for tx:", tx.hash);
     await tx.wait();
+    
     console.log("Added with tx:", tx.hash);
   }
 }

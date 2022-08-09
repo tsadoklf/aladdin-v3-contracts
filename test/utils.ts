@@ -1,18 +1,24 @@
+// @ts-nocheck
 import { Assertion } from "chai";
 import { config as dotEnvConfig } from "dotenv";
 import { BigNumber, BigNumberish } from "ethers";
 import * as hre from "hardhat";
 
-dotEnvConfig();
+// dotEnvConfig();
+
+import path = require('path');
+dotEnvConfig({ path: path.resolve(__dirname, '../.secrets/secrets.env') });
 
 // eslint-disable-next-line camelcase
 export async function request_fork(blockNumber: number, accounts: string[]) {
+
   await hre.network.provider.request({
     method: "hardhat_reset",
     params: [
       {
         forking: {
-          jsonRpcUrl: process.env.HARDHAT_FORK_URL,
+          // jsonRpcUrl: process.env.HARDHAT_FORK_URL,
+          jsonRpcUrl: process.env.ALCHEMY_MAINNET_URL,
           blockNumber: blockNumber,
         },
       },

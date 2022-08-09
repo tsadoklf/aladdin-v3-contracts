@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.8;
 
 interface IFurnace {
   event Deposit(address indexed _account, uint256 _amount);

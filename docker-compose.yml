@@ -1,0 +1,98 @@
+version: '3'
+
+services:
+
+  hardhat:
+    container_name: hardhat
+    # depends_on:
+    #   - ipfs
+    #   - ganache-cli
+    # image: ghcr.io/foundry-rs/foundry:latest
+    image: hardhat-dev:node-16.16.0
+
+    ports:
+      # - 8545:8545
+      - 8546:8545
+
+    # healthcheck:   
+    #   test: curl -sf -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' localhost:8545
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 5    
+    
+    command: 
+    # entrypoint:
+      - /bin/bash
+      - -c
+      - |
+
+        export LC_CTYPE=en_US.UTF-8 && source ~/.bashrc
+        export LC_ALL=C.UTF-8 && source ~/.bashrc
+
+        # echo ""
+        # echo "forge snapshot ..."
+        echo ""
+        npx hardhat --version 
+        
+        # npx hardhat
+        echo "------------------------------------------"
+        echo NETWORK = ${NETWORK:-"development"}
+        echo "------------------------------------------"
+
+        # echo ""
+        # echo "Accounts"
+        # echo "------------------------------------------"
+        # npx hardhat accounts
+
+        echo ""
+        echo "------------------------------------------"
+        echo "Compiling ..."
+        echo "------------------------------------------"
+        # npx hardhat clean
+        # npx hardhat compile --network ${NETWORK}
+
+        # https://github.com/NomicFoundation/hardhat/issues/2632
+        npx hardhat compile --network ${NETWORK} --no-typechain && npx hardhat typechain
+
+        # ls -l
+        # ls -la typechain-types
+        
+        echo ""
+        echo "------------------------------------------"
+        echo "Testing ..."
+        echo "------------------------------------------"
+        # npx hardhat test --network ${NETWORK}
+        REPORT_GAS=false
+        npx hardhat test --network ${NETWORK}
+
+        # echo ""
+        # echo "------------------------------------------"
+        # echo "Coverage Analysis ..."
+        # echo "------------------------------------------"
+        # npx hardhat coverage --network ${NETWORK}
+
+        # if [[ "${NETWORK}" == "hardhat" ]]; then
+        #   # npx hardhat node --network ${NETWORK}
+        #   npx hardhat node
+        # fi
+        
+        bash
+    
+    stdin_open: true
+
+    # keep the container running
+    tty: true
+    volumes:
+      - $BASE_DIR/contracts:/usr/app/contracts:ro
+      - $BASE_DIR/test:/usr/app/test:ro
+      - $BASE_DIR/scripts:/usr/app/scripts
+
+      - $BASE_DIR/artifacts:/usr/app/artifacts
+      - $BASE_DIR/cache:/usr/app/cache
+      - $BASE_DIR/typechain-types:/usr/app/typechain-types
+
+      - $BASE_DIR/hardhat.config.ts:/usr/app/hardhat.config.ts
+      - $BASE_DIR/tsconfig.json:/usr/app/tsconfig.json
+      
+      - $BASE_DIR/.secrets/secrets.env:/usr/app/.secrets/secrets.env
+  
