@@ -51,11 +51,16 @@ contract AladdinConvexVaultZap is Ownable, IZap {
 
     /********************************** Mutated Functions **********************************/
 
+    function appendString(string memory _a, address _b, address _c) internal pure returns (string memory)  {
+        return string(abi.encodePacked(_a, _b, _c));
+    }
+
     function zap(address _fromToken, uint256 _amountIn, address _toToken, uint256 _minOut) external payable override returns (uint256) {
         require(_toToken == WETH || _toToken == CRV, "AladdinConvexVaultZap: toToken unsupported");
 
         uint256[] memory _routes = routes[_fromToken][_toToken];
         require(_routes.length > 0, "AladdinConvexVaultZap: route unavailable");
+        // require(_routes.length > 0, appendString("AladdinConvexVaultZap: route unavailable for tokens ",_fromToken, _toToken));
 
         uint256 _amount = _amountIn;
         for (uint256 i = 0; i < _routes.length; i++) {
@@ -88,9 +93,8 @@ contract AladdinConvexVaultZap is Ownable, IZap {
         
         // TODO: !!!
         // address _pool = address(_route & uint256(1461501637330902918203684832716283019655932542975));
-        // address _pool = address(uint160(_route & uint256(1461501637330902918203684832716283019655932542975)));
-        address _pool = address(uint160(_route));
-        
+        address _pool = address(uint160(_route & uint256(1461501637330902918203684832716283019655932542975)));
+        // address _pool = address(uint160(_route));
         
         uint256 _poolType = (_route >> 160) & 15;
         uint256 _indexIn = (_route >> 164) & 3;

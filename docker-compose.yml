@@ -26,6 +26,8 @@ services:
       - -c
       - |
 
+        # npm i --save-dev hardhat-tracer
+
         export LC_CTYPE=en_US.UTF-8 && source ~/.bashrc
         export LC_ALL=C.UTF-8 && source ~/.bashrc
 
@@ -63,7 +65,8 @@ services:
         echo "------------------------------------------"
         # npx hardhat test --network ${NETWORK}
         REPORT_GAS=false
-        npx hardhat test --network ${NETWORK}
+        # npx hardhat test --network ${NETWORK} --trace
+        npx hardhat test --network ${NETWORK} --grep "${TESTS}"
 
         # echo ""
         # echo "------------------------------------------"

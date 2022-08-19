@@ -19,6 +19,7 @@ import "../interfaces/IZap.sol";
 
 // solhint-disable no-empty-blocks, reason-string
 contract AladdinCRV is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, IAladdinCRV {
+  
   using SafeMathUpgradeable for uint256;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 

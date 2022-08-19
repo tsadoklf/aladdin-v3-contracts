@@ -13,3 +13,6 @@ cache
 artifacts
 
 .secrets
+test-internal
+test-backup
+.backup

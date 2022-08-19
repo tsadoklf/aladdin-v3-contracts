@@ -11,7 +11,6 @@ dotEnvConfig({ path: path.resolve(__dirname, '../.secrets/secrets.env') });
 
 // eslint-disable-next-line camelcase
 export async function request_fork(blockNumber: number, accounts: string[]) {
-
   await hre.network.provider.request({
     method: "hardhat_reset",
     params: [

@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
+import "hardhat/console.sol";
+
 import "../interfaces/IZap.sol";
 import "../interfaces/IWETH.sol";
 
@@ -53,44 +55,40 @@ contract AladdinZap is OwnableUpgradeable, TokenZapLogic, IZap {
 
   /********************************** Mutated Functions **********************************/
 
-  function zapFrom(
-    address _fromToken,
-    uint256 _amountIn,
-    address _toToken,
-    uint256 _minOut
-  ) external payable returns (uint256) {
-    if (_isETH(_fromToken)) {
+  function zapFrom(address _fromToken, uint256 _amountIn, address _toToken, uint256 _minOut) external payable returns (uint256) {
+    if (CommonLib.isETH(_fromToken)) {
       require(_amountIn == msg.value, "AladdinZap: amount mismatch");
     } else {
       uint256 before = IERC20Upgradeable(_fromToken).balanceOf(address(this));
       IERC20Upgradeable(_fromToken).safeTransferFrom(msg.sender, address(this), _amountIn);
       _amountIn = IERC20Upgradeable(_fromToken).balanceOf(address(this)) - before;
     }
-
     return zap(_fromToken, _amountIn, _toToken, _minOut);
   }
 
   /// @dev zap function, assume from token is already in contract.
-  function zap(
-    address _fromToken,
-    uint256 _amountIn,
-    address _toToken,
-    uint256 _minOut
-  ) public payable override returns (uint256) {
-    uint256[] memory _routes = routes[_isETH(_fromToken) ? WETH : _fromToken][_isETH(_toToken) ? WETH : _toToken];
+  function zap(address _fromToken, uint256 _amountIn, address _toToken, uint256 _minOut) public payable override returns (uint256) {
+
+    uint256[] memory _routes = routes[CommonLib.isETH(_fromToken) ? WETH : _fromToken][CommonLib.isETH(_toToken) ? WETH : _toToken];
     require(_routes.length > 0, "AladdinZap: route unavailable");
 
     uint256 _amount = _amountIn;
     for (uint256 i = 0; i < _routes.length; i++) {
+      console.log("AladdinZap.zap: swap route %s", i);
       _amount = swap(_routes[i], _amount);
     }
     require(_amount >= _minOut, "AladdinZap: insufficient output");
-    if (_isETH(_toToken)) {
-      _unwrapIfNeeded(_amount);
+    
+    if (CommonLib.isETH(_toToken)) {
+      console.log("AladdinZap.zap: transfer %s ETH ", _amount);
+
+      CommonLib.unwrapIfNeeded(_amount);
       // solhint-disable-next-line avoid-low-level-calls
       (bool success, ) = msg.sender.call{ value: _amount }("");
       require(success, "AladdinZap: ETH transfer failed");
     } else {
+      console.log("AladdinZap.zap: transfer %s of token %s", _amount, _toToken);
+
       _wrapTokenIfNeeded(_toToken, _amount);
       IERC20Upgradeable(_toToken).safeTransfer(msg.sender, _amount);
     }
@@ -99,11 +97,7 @@ contract AladdinZap is OwnableUpgradeable, TokenZapLogic, IZap {
 
   /********************************** Restricted Functions **********************************/
 
-  function updateRoute(
-    address _fromToken,
-    address _toToken,
-    uint256[] memory _routes
-  ) external onlyOwner {
+  function updateRoute(address _fromToken, address _toToken, uint256[] memory _routes) external onlyOwner {
     delete routes[_fromToken][_toToken];
 
     routes[_fromToken][_toToken] = _routes;
@@ -124,4 +118,11 @@ contract AladdinZap is OwnableUpgradeable, TokenZapLogic, IZap {
       IERC20Upgradeable(_tokens[i]).safeTransfer(_recipient, IERC20Upgradeable(_tokens[i]).balanceOf(address(this)));
     }
   }
+
+  function _wrapTokenIfNeeded(address _token, uint256 _amount) internal {
+    if (_token == WETH && IERC20Upgradeable(_token).balanceOf(address(this)) < _amount) {
+      IWETH(_token).deposit{ value: _amount }();
+    }
+  }
+  
 }

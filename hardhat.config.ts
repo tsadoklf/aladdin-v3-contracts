@@ -7,6 +7,8 @@ import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+// import "hardhat-tracer";
+
 // import "@openzeppelin/contracts-upgradeable";
 
 dotenv.config();
@@ -34,7 +36,7 @@ const config: HardhatUserConfig = {
         compilers: [
             {
             // version: "0.7.6",
-            version: "0.8.8",
+            version: "0.8.11",
             settings: {
                 optimizer: {
                 enabled: true,

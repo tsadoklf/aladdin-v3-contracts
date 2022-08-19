@@ -172,9 +172,13 @@ async function main() {
   await addVaults();
 }
 
+async function test() {
+  console.log("TESTS");
+}
+
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+// main().catch((error) => {
+//   console.error(error);
+//   process.exitCode = 1;
+// });

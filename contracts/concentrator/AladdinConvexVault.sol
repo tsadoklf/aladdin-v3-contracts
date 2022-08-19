@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
-
+import "hardhat/console.sol";
 
 import "./interfaces/IAladdinConvexVault.sol";
 import "./interfaces/IAladdinCRV.sol";
@@ -33,8 +33,9 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
     address _migrator,
     uint256 _newPid
   );
-
   struct PoolInfo {
+    // The pool internal id
+    uint256 id;
     // The amount of total deposited token.
     uint128 totalUnderlying;
     // The amount of total deposited shares.
@@ -466,45 +467,96 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
     return _rewards;
   }
 
+  function showInfo(string memory title) internal view {
+
+    console.log("\n%s", title);
+    console.log("  Contract balance: %s ETH", address(this).balance / 1e18);
+    console.log("  Contract balance: %s CRV", IERC20Upgradeable(CRV).balanceOf(address(this)));
+    console.log("  Contract balance: %s CvxCRV", IERC20Upgradeable(CVXCRV).balanceOf(address(this)));
+    console.log("  AladdinCRV balance of underlying: %s CvxCRV ", IAladdinCRV(aladdinCRV).balanceOfUnderlying(address(this)));
+
+  }
+
+  function showPoolStatus(string memory title, PoolInfo memory _pool) internal view {
+    console.log("\n%s", title);
+    console.log("  id = ", _pool.id);
+    console.log("  totalShare = ", _pool.totalShare);
+    console.log("  accRewardPerShare = ", _pool.accRewardPerShare);
+    // console.log("  accRewardPerShare = ", _pool.accRewardPerShare);
+  }
+
   /// @notice See {IAladdinConvexVault-harvest}
-  function harvest(
-    uint256 _pid,
-    address _recipient,
-    uint256 _minimumOut
-  ) external virtual override onlyExistPool(_pid) nonReentrant returns (uint256 harvested) {
+  function harvest(uint256 _pid, address _recipient, uint256 _minimumOut
+    ) external virtual override onlyExistPool(_pid) nonReentrant returns (uint256 harvested) {
+
     PoolInfo storage _pool = poolInfo[_pid];
+    
     // 1. claim rewards
     IConvexBasicRewards(_pool.crvRewards).getReward();
 
     // 2. swap all rewards token to CRV
     address[] memory _rewardsToken = _pool.convexRewardTokens;
+
+    // TSADOK: starting with ETH?
     uint256 _amount = address(this).balance;
     address _token;
     address _zap = zap;
+
     for (uint256 i = 0; i < _rewardsToken.length; i++) {
       _token = _rewardsToken[i];
       if (_token != CRV) {
         uint256 _balance = IERC20Upgradeable(_token).balanceOf(address(this));
         if (_balance > 0) {
+
           // saving gas
           IERC20Upgradeable(_token).safeTransfer(_zap, _balance);
-          _amount = _amount.add(IZap(_zap).zap(_token, _balance, address(0), 0));
+
+          // console.log("harvest: claim rewards - safeTransfer of balance to zap done");
+          // console.log("Zapping %s of token %s to ETH", _balance, _token);
+          // console.log("  Contract balance: %s ETH", address(this).balance / 1e18);
+          // console.log("  msg.sender balance: %s ETH", msg.sender.balance / 1e18);
+
+          // TSADOK: swapping this contracts's token balance to ETH
+          uint _rewardEth = IZap(_zap).zap(_token, _balance, address(0), 0);
+
+          // console.log("harvest: claim rewards - after zapping: _rewardEth =  ", _rewardEth);
+
+          _amount = _amount.add(_rewardEth);
         }
       }
     }
+    
+    // TSADOK: swapping this contract's ETH to CRV?
     if (_amount > 0) {
+      console.log("Swapping (zap) %s WEI to CRV", _amount);
       IZap(_zap).zap{ value: _amount }(address(0), _amount, CRV, 0);
     }
+
+    // _amount is now in CRV
     _amount = IERC20Upgradeable(CRV).balanceOf(address(this));
+
+    // showInfo("Before swapping from CRV to CvxCRV");
+    
+    // swapping CRV to CvxCRV
     _amount = _swapCRVToCvxCRV(_amount, _minimumOut);
 
+    // showInfo("After swapping from CRV to CvxCRV");
+   
     _token = aladdinCRV; // gas saving
+
+    // TSADOK: approve _token (=spender)? approve _token an allowance of _amount? 
     _approve(CVXCRV, _token, _amount);
+
+    // _rewards are now is CvxCRV?
+    // Deposit cvxCRV token from this contract (address(this)) to _token (AladdinCRV) contract
     uint256 _rewards = IAladdinCRV(_token).deposit(address(this), _amount);
 
+    // showInfo("After depositing CvxCRV to AladdinCRV");
+    
     // 3. distribute rewards to platform and _recipient
     uint256 _platformFee = _pool.platformFeePercentage;
     uint256 _harvestBounty = _pool.harvestBountyPercentage;
+
     if (_platformFee > 0) {
       _platformFee = (_platformFee * _rewards) / FEE_DENOMINATOR;
       _rewards = _rewards - _platformFee;
@@ -516,8 +568,12 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
       IERC20Upgradeable(_token).safeTransfer(_recipient, _harvestBounty);
     }
 
+    // showPoolStatus("Pool before update reward info", _pool);
+ 
     // 4. update rewards info
     _pool.accRewardPerShare = _pool.accRewardPerShare.add(_rewards.mul(PRECISION) / _pool.totalShare);
+    
+    // showPoolStatus("Pool before after reward info", _pool);
 
     emit Harvest(msg.sender, _rewards, _platformFee, _harvestBounty);
 
@@ -583,6 +639,24 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
     emit UpdateMigrator(_migrator);
   }
 
+  // function getPoolByLPToken(address lpToken) external view returns (uint) {
+  //   for (uint256 i = 0; i < poolInfo.length; i++) {
+  //     if (poolInfo[i].lpToken == lpToken ){
+  //       return i;
+  //     }
+  //   }
+  //   revert("Pool does not exist");
+  // }
+
+  function getPoolByLPToken(address lpToken) external view returns (PoolInfo memory) {
+    for (uint256 i = 0; i < poolInfo.length; i++) {
+      if (poolInfo[i].lpToken == lpToken ){
+        return poolInfo[i];
+      }
+    }
+    revert("Pool does not exist");
+  }
+
   /// @dev Add new Convex pool.
   /// @param _convexPid - The Convex pool id.
   /// @param _rewardTokens - The list of addresses of reward tokens.
@@ -596,6 +670,7 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
     uint256 _platformFeePercentage,
     uint256 _harvestBountyPercentage
   ) external onlyOwner {
+
     for (uint256 i = 0; i < poolInfo.length; i++) {
       require(poolInfo[i].convexPoolId != _convexPid, "duplicate pool");
     }
@@ -605,8 +680,13 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
     require(_harvestBountyPercentage <= MAX_HARVEST_BOUNTY, "fee too large");
 
     IConvexBooster.PoolInfo memory _info = IConvexBooster(BOOSTER).poolInfo(_convexPid);
+
+    // console.log("AladdinConvexVault.addPool: _info.lptoken = %s", _info.lptoken);
+
+    uint _poolId = poolInfo.length;
     poolInfo.push(
       PoolInfo({
+        id: _poolId,
         totalUnderlying: 0,
         totalShare: 0,
         accRewardPerShare: 0,
@@ -622,7 +702,8 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
       })
     );
 
-    emit AddPool(poolInfo.length - 1, _convexPid, _rewardTokens);
+    // emit AddPool(poolInfo.length - 1, _convexPid, _rewardTokens);
+    emit AddPool(_poolId, _convexPid, _rewardTokens);    
   }
 
   /// @dev update reward tokens
@@ -737,6 +818,7 @@ contract AladdinConvexVault is OwnableUpgradeable, ReentrancyGuardUpgradeable, I
     if (_amount == 0) return _amount;
 
     IAladdinCRV.WithdrawOption _withdrawOption;
+    
     if (_option == ClaimOption.Claim) {
       require(_amount >= _minOut, "insufficient output");
       IERC20Upgradeable(aladdinCRV).safeTransfer(msg.sender, _amount);

@@ -55,4 +55,6 @@ export const TOKENS: { [symbol: string]: { address: string; decimals: number } }
   crvFRAX: { decimals: 18, address: "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC" },
   TUSD: { decimals: 18, address: "0x0000000000085d4780B73119b644AE5ecd22b376" },
   LUSD: { decimals: 18, address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0" },
+  pitchFXS: { decimals: 18, address: "0x11EBe21e9d7BF541A18e1E3aC94939018Ce88F0b" },
+  
 };
